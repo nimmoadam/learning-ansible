@@ -1,0 +1,57 @@
+- name: Install nginx
+  hosts: node
+  become: true
+  tasks:
+  - name: Adding epel-release repo
+    shell: |
+      yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      yum-config-manager --enable epel
+      yum update -y
+      yum install docker -y
+      
+  - name: Adding a new user 'ec2-user' with  appending the group 'docker'
+    user:
+      name: ec2-user
+      groups: docker
+      append: yes
+    tags: Append ec2-user
+ 
+  - name: Install python2-pip
+    yum:
+      name: python-pip
+      state: present
+  
+  - name: PIP
+    pip:
+     name: docker-py
+     state: present
+  
+  - name: Start Docker
+    service:
+      name: docker
+      state: started
+    tags: Start Docker service
+  
+  - name: Copy HTML file from controller node to managed node
+    copy:
+      src: ./indextest.html
+      dest: /mypage/
+      mode: 777
+
+  - name: Pulling an image
+    docker_image:
+      name: httpd
+      source: pull
+    tags: Image pull
+  
+  - name: Create a volume
+    docker_container:
+      name: myfirst_app
+      image: httpd
+      state: started
+      exposed_ports:
+        - "80"
+      ports:
+        - "8081:80"
+      volumes:
+        - "mypage:/usr/local/apache2/htdocs"
